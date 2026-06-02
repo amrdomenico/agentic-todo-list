@@ -66,9 +66,8 @@ def update_todo(todo_id, description=None, done=None):
     sql = f"UPDATE {TABLE} SET {', '.join(fields)} WHERE id = ?"
     c.execute(sql, values)
     conn.commit()
-    updated = c.rowcount > 0
     conn.close()
-    return updated
+    return get_todo(todo_id)
 
 def delete_todo(todo_id):
     conn = get_connection()
@@ -78,18 +77,3 @@ def delete_todo(todo_id):
     deleted = c.rowcount > 0
     conn.close()
     return deleted
-
-if __name__ == "__main__":
-    init_db()
-
-    id1 = create_todo("Aprender SQLite")
-    id2 = create_todo("Construir API Flask")
-    print("Criados:", id1, id2)
-
-    print("Lista:", list_todos())
-
-    update_todo(id1, done=True)
-    print("Após marcar done:", list_todos())
-
-    delete_todo(id2)
-    print("Após deletar:", list_todos())

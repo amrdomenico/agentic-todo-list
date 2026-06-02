@@ -1,61 +1,51 @@
-from flask import Flask, request, jsonify
-
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import database
 
-app = Flask(__name__)
+app = FastAPI(title='todo-llm API')
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.route("/api/todos", methods=["GET"])
-def api_list_todos():
-    return jsonify(database.list_todos())
+class TodoCreate(BaseModel):
+    description: str   
 
+class TodoUpdate(BaseModel):
+    description: str | None = None
+    done: bool | None = None
 
-@app.route("/api/todos/<int:todo_id>", methods=["GET"])
-def api_get_todo(todo_id):
-    todo = database.get_todo(todo_id)
-    if todo is None:
-        return jsonify({"error": "Todo não encontrado"}), 404
-    return jsonify(todo)
+@app.post("/todos", status_code=201)
+def create_todo(body: TodoCreate):
+    id = database.create_todo(body.description)
+    return {"id": id}
 
+@app.get("/todos")
+def list_todos():
+    return database.list_todos()
 
-@app.route("/api/todos", methods=["POST"])
-def api_create_todo():
-    data = request.get_json(silent=True) or {}
-    description = (data.get("description") or "").strip()
-    if not description:
-        return jsonify({"error": "description é obrigatório"}), 400
-    new_id = database.create_todo(description)
-    return jsonify(database.get_todo(new_id)), 201
+@app.get("/todos/{id}")
+def get_todo(id: int):
+    todo = database.get_todo(id)
+    if not todo:
+        raise HTTPException(status_code=404, detail="Not found")
+    return todo
 
+@app.patch("/todos/{id}")
+def update_todo(id: int, body: TodoUpdate):
+    todo_update = database.update_todo(id, description=body.description, done=body.done)
+    if not todo_update:
+        raise HTTPException(status_code=404, detail="Not found")
+    return todo_update
 
-@app.route("/api/todos/<int:todo_id>", methods=["PATCH"])
-def api_update_todo(todo_id):
-    if database.get_todo(todo_id) is None:
-        return jsonify({"error": "Todo não encontrado"}), 404
-
-    data = request.get_json(silent=True) or {}
-    description = data.get("description")
-    done = data.get("done")
-
-    if description is not None:
-        description = description.strip()
-        if not description:
-            return jsonify({"error": "description não pode ser vazio"}), 400
-
-    if description is None and done is None:
-        return jsonify({"error": "Envie description e/ou done"}), 400
-
-    database.update_todo(todo_id, description=description, done=done)
-    return jsonify(database.get_todo(todo_id))
-
-
-@app.route("/api/todos/<int:todo_id>", methods=["DELETE"])
-def api_delete_todo(todo_id):
-    if not database.delete_todo(todo_id):
-        return jsonify({"error": "Todo não encontrado"}), 404
-    return "", 204
-
-
-if __name__ == "__main__":
-    database.init_db()
-    app.run(debug=True)
+@app.delete("/todos/{id}", status_code=204)
+def delete_todo(id: int):
+    todo_delete = database.delete_todo(id)
+    if not todo_delete:
+        raise HTTPException(status_code=404, detail="Not found")
+    return todo_delete
