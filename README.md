@@ -1,4 +1,4 @@
-# Aagentic TODO List
+# Agentic TODO List
 
 > 🚧 Work in progress
 
