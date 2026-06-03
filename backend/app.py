@@ -5,6 +5,8 @@ import database
 
 app = FastAPI(title='todo-llm API')
 
+database.init_db()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
